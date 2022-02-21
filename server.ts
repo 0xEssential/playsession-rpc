@@ -3,7 +3,7 @@ import rpc from 'json-rpc2';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { BigNumber, Contract, utils, Wallet } from 'ethers';
 
-import FWD_ABI from '../test/integration/artifacts/contracts/Forwarder.sol/EssentialForwarder.json';
+import EssentialForwarder from './abis/EssentialForwarder.json';
 
 const OWNER_ABI = [
   {
@@ -70,7 +70,7 @@ async function generateProof({
     altnetProvider,
   );
 
-  const forwarder = new Contract(to, FWD_ABI.abi, ownershipSigner);
+  const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
   const message = await forwarder.createMessage(
     owner,
     nonce,
