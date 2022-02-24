@@ -53,7 +53,7 @@ async function fetchCurrentOwner(
 }
 
 async function generateProof({
-  from,
+  owner,
   nonce,
   nftContract,
   tokenId,
@@ -72,7 +72,7 @@ async function generateProof({
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
   const message = await forwarder.createMessage(
-    from,
+    owner,
     nonce,
     nftContract,
     tokenId,
@@ -82,7 +82,7 @@ async function generateProof({
 }
 
 async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
-  const { from, nonce, nftContract, tokenId } = decodeCalldata(callData);
+  const { nonce, nftContract, tokenId } = decodeCalldata(callData);
 
   // lookup current owner on mainnet
   let owner: string;
@@ -99,7 +99,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   let proof: string;
   try {
     proof = await generateProof({
-      from,
+      owner,
       nonce,
       nftContract,
       tokenId,
