@@ -88,8 +88,8 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   let owner: string;
   try {
     owner = await fetchCurrentOwner(
-      '0x941ee2e831d278DB802A541d3855A8de749ef635',
-      BigNumber.from(411),
+      nftContract,
+      tokenId,
     );
   } catch (e) {
     return callback(new rpc.Error.InternalError('Error fetching owner'));
