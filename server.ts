@@ -72,6 +72,9 @@ async function generateProof({
   );
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
+
+  console.warn(forwarder);
+
   const message = await forwarder.createMessage(
     owner,
     nonce,
@@ -79,7 +82,7 @@ async function generateProof({
     tokenId,
     tokenNonce
   );
-
+    console.warn(message);
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
