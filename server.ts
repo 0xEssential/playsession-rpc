@@ -73,7 +73,11 @@ async function generateProof({
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
 
-  console.warn(forwarder);
+  console.warn(owner,
+    nonce,
+    nftContract,
+    tokenId,
+    tokenNonce);
 
   const message = await forwarder.createMessage(
     owner,
