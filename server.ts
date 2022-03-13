@@ -35,12 +35,12 @@ const server = rpc.Server.$create({
 
 function decodeCalldata(calldata: string): Record<string, any> {
   const abi = new utils.AbiCoder();
-  const [from, nonce, nftContract, tokenId] = abi.decode(
-    ['address', 'uint256', 'address', 'uint256'],
+  const [from, nonce, nftContract, tokenId, tokenNonce] = abi.decode(
+    ['address', 'uint256', 'address', 'uint256', 'uint256'],
     calldata,
   );
 
-  return { from, nonce, nftContract, tokenId };
+  return { from, nonce, nftContract, tokenId, tokenNonce };
 }
 
 async function fetchCurrentOwner(
@@ -58,6 +58,7 @@ async function generateProof({
   nftContract,
   tokenId,
   to,
+  tokenNonce
   // abi,
 }): Promise<string> {
   // This EOA won't have any assets, and can be easily changed on the Forwarding
@@ -76,13 +77,14 @@ async function generateProof({
     nonce,
     nftContract,
     tokenId,
+    tokenNonce
   );
 
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
 async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
-  const { nonce, nftContract, tokenId } = decodeCalldata(callData);
+  const { nonce, nftContract, tokenId, tokenNonce } = decodeCalldata(callData);
 
   // lookup current owner on mainnet
   let owner: string;
@@ -104,6 +106,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
       nftContract,
       tokenId,
       to,
+      tokenNonce
       // abi,
     });
   } catch (e) {
