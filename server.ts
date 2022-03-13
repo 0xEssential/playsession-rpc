@@ -117,6 +117,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
       // abi,
     });
   } catch (e) {
+    console.warn(e);
     return callback(new rpc.Error.InternalError('Error generating proof'));
   }
 
