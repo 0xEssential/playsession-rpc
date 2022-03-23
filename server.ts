@@ -73,12 +73,6 @@ async function generateProof({
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
 
-  console.warn(owner,
-    nonce,
-    nftContract,
-    tokenId,
-    tokenNonce);
-
   const message = await forwarder.createMessage(
     owner,
     nonce,
@@ -86,12 +80,12 @@ async function generateProof({
     tokenId,
     tokenNonce
   );
-    console.warn(message);
+
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
 async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
-  const { nonce, nftContract, tokenId, tokenNonce } = decodeCalldata(callData);
+  const { from, nonce, nftContract, tokenId, tokenNonce } = decodeCalldata(callData);
 
   // lookup current owner on mainnet
   let owner: string;
