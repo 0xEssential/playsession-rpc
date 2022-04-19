@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import rpc from 'json-rpc2';
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { InfuraProvider, JsonRpcProvider } from '@ethersproject/providers';
 import { BigNumber, Contract, utils, Wallet } from 'ethers';
 
 import EssentialForwarder from './abis/EssentialForwarder.json';
@@ -55,11 +55,12 @@ function decodeCalldata(calldata: string): RawCalldata {
 }
 
 async function fetchCurrentOwner(
+  nftChainId: BigNumber,
   nftContract: string,
   tokenId: BigNumber,
 ): Promise<string> {
-  const mainnetProvider = new JsonRpcProvider(process.env.MAINNET_RPC_URL, 1);
-  const Erc721 = new Contract(nftContract, OWNER_ABI, mainnetProvider);
+  const nftChainProvider = new InfuraProvider(process.env.INFURA_API_KEY, nftChainId.toNumber());
+  const Erc721 = new Contract(nftContract, OWNER_ABI, nftChainProvider);
   return Erc721.ownerOf(tokenId);
 }
 
@@ -80,7 +81,9 @@ async function generateProof(
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
 
-  // TODO: verify nonce?
+  const nonce = await forwarder.getNonce(decodedCallData.from);
+
+  if (!nonce.eq(decodedCallData.nonce)) throw Error('Invalid nonce');
 
   const message = await forwarder.createMessage(
     decodedCallData.from,
@@ -102,6 +105,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   let owner: string;
   try {
     owner = await fetchCurrentOwner(
+      decodedCallData.nftChainId,
       decodedCallData.nftContract,
       decodedCallData.tokenId,
     );
