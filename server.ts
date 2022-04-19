@@ -27,20 +27,31 @@ const OWNER_ABI = [
   },
 ];
 
+type RawCalldata = {
+  from: string, 
+  authorizer: string, 
+  nonce: BigNumber, 
+  nftChainId: BigNumber,
+  nftContract: string,
+  tokenId: BigNumber,
+  targetChainId: BigNumber,
+  timestamp: BigNumber,
+}
+
 const server = rpc.Server.$create({
   headers: {
     'Access-Control-Allow-Origin': '*',
   },
 });
 
-function decodeCalldata(calldata: string): Record<string, any> {
+function decodeCalldata(calldata: string): RawCalldata {
   const abi = new utils.AbiCoder();
-  const [from, nonce, nftContract, tokenId, tokenNonce] = abi.decode(
-    ['address', 'uint256', 'address', 'uint256', 'uint256'],
-    calldata,
+  const args = abi.decode(
+    ['address', 'address', 'uint256', 'uint256', 'address', 'uint256', 'uint256', 'uint256'],
+    calldata
   );
 
-  return { from, nonce, nftContract, tokenId, tokenNonce };
+  return args.reduce((a, v) => ({ ...a, [v]: v}), {}) 
 }
 
 async function fetchCurrentOwner(
@@ -52,15 +63,11 @@ async function fetchCurrentOwner(
   return Erc721.ownerOf(tokenId);
 }
 
-async function generateProof({
-  owner,
-  nonce,
-  nftContract,
-  tokenId,
-  to,
-  tokenNonce
-  // abi,
-}): Promise<string> {
+async function generateProof(
+  owner: string,
+  to: string,
+  decodedCallData: RawCalldata,
+): Promise<string> {
   // This EOA won't have any assets, and can be easily changed on the Forwarding
   // contract, so the risk profile is pretty low. We use this on the L2 to fetch
   // the message to sign.
@@ -73,26 +80,30 @@ async function generateProof({
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
 
+  // TODO: verify nonce?
+
   const message = await forwarder.createMessage(
+    decodedCallData.from,
     owner,
-    nonce,
-    nftContract,
-    tokenId,
-    tokenNonce
+    decodedCallData.nonce,
+    decodedCallData.nftChainId,
+    decodedCallData.nftContract,
+    decodedCallData.tokenId,
+    decodedCallData.timestamp,
   );
 
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
 async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
-  const { from, nonce, nftContract, tokenId, tokenNonce } = decodeCalldata(callData);
+  const decodedCallData = decodeCalldata(callData);
 
   // lookup current owner on mainnet
   let owner: string;
   try {
     owner = await fetchCurrentOwner(
-      nftContract,
-      tokenId,
+      decodedCallData.nftContract,
+      decodedCallData.tokenId,
     );
   } catch (e) {
     return callback(new rpc.Error.InternalError('Error fetching owner'));
@@ -101,15 +112,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   // generate proof for owner or authorized
   let proof: string;
   try {
-    proof = await generateProof({
-      owner,
-      nonce,
-      nftContract,
-      tokenId,
-      to,
-      tokenNonce
-      // abi,
-    });
+    proof = await generateProof(owner, to, decodedCallData);
   } catch (e) {
     console.warn(e);
     return callback(new rpc.Error.InternalError('Error generating proof'));
