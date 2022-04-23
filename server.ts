@@ -91,7 +91,7 @@ async function generateProof(
     decodedCallData.nonce,
     decodedCallData.nftChainId,
     decodedCallData.nftContract,
-    decodedCallData.tokenId,
+    decodedCallData.nftTokenId,
     decodedCallData.timestamp,
   );
 
@@ -109,7 +109,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
     owner = await fetchCurrentOwner(
       decodedCallData.nftChainId,
       decodedCallData.nftContract,
-      decodedCallData.tokenId,
+      decodedCallData.nftTokenId,
     );
   } catch (e) {
     return callback(new rpc.Error.InternalError('Error fetching owner'));
