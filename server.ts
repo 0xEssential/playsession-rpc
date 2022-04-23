@@ -59,7 +59,7 @@ async function fetchCurrentOwner(
   nftContract: string,
   tokenId: BigNumber,
 ): Promise<string> {
-  const nftChainProvider = new InfuraProvider(process.env.INFURA_API_KEY, nftChainId.toNumber());
+  const nftChainProvider = new InfuraProvider(nftChainId.toNumber(), process.env.INFURA_API_KEY);
   const Erc721 = new Contract(nftContract, OWNER_ABI, nftChainProvider);
   return Erc721.ownerOf(tokenId);
 }
