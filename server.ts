@@ -33,7 +33,7 @@ type RawCalldata = {
   nonce: BigNumber, 
   nftChainId: BigNumber,
   nftContract: string,
-  tokenId: BigNumber,
+  nftTokenId: BigNumber,
   targetChainId: BigNumber,
   timestamp: BigNumber,
 }
@@ -51,7 +51,7 @@ function decodeCalldata(calldata: string): RawCalldata {
     calldata
   );
 
-  return [from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp].reduce((a, v) => ({ ...a, [v]: v}), {}) 
+  return {from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp}
 }
 
 async function fetchCurrentOwner(
