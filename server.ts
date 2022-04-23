@@ -100,7 +100,9 @@ async function generateProof(
 
 async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   const decodedCallData = decodeCalldata(callData);
-
+  
+  console.warn(decodedCallData);
+  
   // lookup current owner on mainnet
   let owner: string;
   try {
