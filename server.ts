@@ -46,12 +46,12 @@ const server = rpc.Server.$create({
 
 function decodeCalldata(calldata: string): RawCalldata {
   const abi = new utils.AbiCoder();
-  const args = abi.decode(
+  const [from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp] = abi.decode(
     ['address', 'address', 'uint256', 'uint256', 'address', 'uint256', 'uint256', 'uint256'],
     calldata
   );
 
-  return args.reduce((a, v) => ({ ...a, [v]: v}), {}) 
+  return [from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp].reduce((a, v) => ({ ...a, [v]: v}), {}) 
 }
 
 async function fetchCurrentOwner(
