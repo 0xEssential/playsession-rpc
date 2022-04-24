@@ -68,10 +68,6 @@ async function generateProof(
   abi: string,
   decodedCallData: RawCalldata,
 ): Promise<string> {
-  // This EOA won't have any assets, and can be easily changed on the Forwarding
-  // contract, so the risk profile is pretty low. We use this on the L2 to fetch
-  // the message to sign.
-
   const targetProvider = new InfuraProvider(decodedCallData.targetChainId.toNumber(), process.env.INFURA_API_KEY);
   const ownershipSigner = new Wallet(
     process.env.OWNERSHIP_SIGNER_PRIVATE_KEY,
@@ -79,9 +75,8 @@ async function generateProof(
   );
 
   const forwarder = new Contract(to, abi, ownershipSigner);
-
   const nonce = await forwarder.getNonce(decodedCallData.from);
-
+  
   if (!nonce.eq(decodedCallData.nonce)) throw Error('Invalid nonce');
 
   const message = await forwarder.createMessage(
