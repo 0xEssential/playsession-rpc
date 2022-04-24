@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import rpc from 'json-rpc2';
-import { InfuraProvider, JsonRpcProvider } from '@ethersproject/providers';
+import { InfuraProvider } from '@ethersproject/providers';
 import { BigNumber, Contract, utils, Wallet } from 'ethers';
 
 import EssentialForwarder from './abis/EssentialForwarder.json';
