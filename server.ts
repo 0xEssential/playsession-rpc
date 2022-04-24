@@ -107,12 +107,11 @@ async function durinCall({ callData, to, abi }, _opt, callback) {
     return callback(new rpc.Error.InternalError('Error fetching owner'));
   }
 
-  // generate proof for owner or authorized
+  // generate proof for owner if valid nonce
   let proof: string;
   try {
     proof = await generateProof(owner, to, abi, decodedCallData);
   } catch (e) {
-    console.warn(e);
     return callback(new rpc.Error.InternalError('Error generating proof'));
   }
 
