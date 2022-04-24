@@ -3,8 +3,6 @@ import rpc from 'json-rpc2';
 import { InfuraProvider } from '@ethersproject/providers';
 import { BigNumber, Contract, utils, Wallet } from 'ethers';
 
-import EssentialForwarder from './abis/EssentialForwarder.json';
-
 const OWNER_ABI = [
   {
     inputs: [
@@ -67,6 +65,7 @@ async function fetchCurrentOwner(
 async function generateProof(
   owner: string,
   to: string,
+  abi: string,
   decodedCallData: RawCalldata,
 ): Promise<string> {
   // This EOA won't have any assets, and can be easily changed on the Forwarding
@@ -79,7 +78,7 @@ async function generateProof(
     targetProvider,
   );
 
-  const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
+  const forwarder = new Contract(to, abi, ownershipSigner);
 
   const nonce = await forwarder.getNonce(decodedCallData.from);
 
@@ -98,7 +97,7 @@ async function generateProof(
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
-async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
+async function durinCall({ callData, to, abi }, _opt, callback) {
   const decodedCallData = decodeCalldata(callData);
     
   // lookup current owner on mainnet
@@ -116,7 +115,7 @@ async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
   // generate proof for owner or authorized
   let proof: string;
   try {
-    proof = await generateProof(owner, to, decodedCallData);
+    proof = await generateProof(owner, to, abi, decodedCallData);
   } catch (e) {
     console.warn(e);
     return callback(new rpc.Error.InternalError('Error generating proof'));
