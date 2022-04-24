@@ -73,10 +73,10 @@ async function generateProof(
   // contract, so the risk profile is pretty low. We use this on the L2 to fetch
   // the message to sign.
 
-  const altnetProvider = new JsonRpcProvider(process.env.ALTNET_RPC_URL);
+  const targetProvider = new InfuraProvider(decodedCallData.targetChainId.toNumber(), process.env.INFURA_API_KEY);
   const ownershipSigner = new Wallet(
     process.env.OWNERSHIP_SIGNER_PRIVATE_KEY,
-    altnetProvider,
+    targetProvider,
   );
 
   const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
