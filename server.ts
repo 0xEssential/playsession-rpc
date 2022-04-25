@@ -1,9 +1,7 @@
 import 'dotenv/config';
 import rpc from 'json-rpc2';
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { InfuraProvider } from '@ethersproject/providers';
 import { BigNumber, Contract, utils, Wallet } from 'ethers';
-
-import EssentialForwarder from './abis/EssentialForwarder.json';
 
 const OWNER_ABI = [
   {
@@ -27,91 +25,93 @@ const OWNER_ABI = [
   },
 ];
 
+type RawCalldata = {
+  from: string, 
+  authorizer: string, 
+  nonce: BigNumber, 
+  nftChainId: BigNumber,
+  nftContract: string,
+  nftTokenId: BigNumber,
+  targetChainId: BigNumber,
+  timestamp: BigNumber,
+}
+
 const server = rpc.Server.$create({
   headers: {
     'Access-Control-Allow-Origin': '*',
   },
 });
 
-function decodeCalldata(calldata: string): Record<string, any> {
+function decodeCalldata(calldata: string): RawCalldata {
   const abi = new utils.AbiCoder();
-  const [from, nonce, nftContract, tokenId, tokenNonce] = abi.decode(
-    ['address', 'uint256', 'address', 'uint256', 'uint256'],
-    calldata,
+  const [from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp] = abi.decode(
+    ['address', 'address', 'uint256', 'uint256', 'address', 'uint256', 'uint256', 'uint256'],
+    calldata
   );
 
-  return { from, nonce, nftContract, tokenId, tokenNonce };
+  return {from, authorizer, nonce, nftChainId, nftContract, nftTokenId, targetChainId, timestamp}
 }
 
 async function fetchCurrentOwner(
+  nftChainId: BigNumber,
   nftContract: string,
   tokenId: BigNumber,
 ): Promise<string> {
-  const mainnetProvider = new JsonRpcProvider(process.env.MAINNET_RPC_URL, 1);
-  const Erc721 = new Contract(nftContract, OWNER_ABI, mainnetProvider);
+  const nftChainProvider = new InfuraProvider(nftChainId.toNumber(), process.env.INFURA_API_KEY);
+  const Erc721 = new Contract(nftContract, OWNER_ABI, nftChainProvider);
   return Erc721.ownerOf(tokenId);
 }
 
-async function generateProof({
-  owner,
-  nonce,
-  nftContract,
-  tokenId,
-  to,
-  tokenNonce
-  // abi,
-}): Promise<string> {
-  // This EOA won't have any assets, and can be easily changed on the Forwarding
-  // contract, so the risk profile is pretty low. We use this on the L2 to fetch
-  // the message to sign.
-
-  const altnetProvider = new JsonRpcProvider(process.env.ALTNET_RPC_URL);
+async function generateProof(
+  owner: string,
+  to: string,
+  abi: string,
+  decodedCallData: RawCalldata,
+): Promise<string> {
+  const targetProvider = new InfuraProvider(decodedCallData.targetChainId.toNumber(), process.env.INFURA_API_KEY);
   const ownershipSigner = new Wallet(
     process.env.OWNERSHIP_SIGNER_PRIVATE_KEY,
-    altnetProvider,
+    targetProvider,
   );
 
-  const forwarder = new Contract(to, EssentialForwarder.abi, ownershipSigner);
+  const forwarder = new Contract(to, abi, ownershipSigner);
+  const nonce = await forwarder.getNonce(decodedCallData.from);
+  
+  if (!nonce.eq(decodedCallData.nonce)) throw Error('Invalid nonce');
 
   const message = await forwarder.createMessage(
+    decodedCallData.from,
     owner,
-    nonce,
-    nftContract,
-    tokenId,
-    tokenNonce
+    decodedCallData.nonce,
+    decodedCallData.nftChainId,
+    decodedCallData.nftContract,
+    decodedCallData.nftTokenId,
+    decodedCallData.timestamp,
   );
 
   return ownershipSigner.signMessage(utils.arrayify(message));
 }
 
-async function durinCall({ callData, to, abi: _abi }, _opt, callback) {
-  const { from, nonce, nftContract, tokenId, tokenNonce } = decodeCalldata(callData);
-
+async function durinCall({ callData, to, abi }, _opt, callback) {
+  const decodedCallData = decodeCalldata(callData);
+    
   // lookup current owner on mainnet
   let owner: string;
   try {
     owner = await fetchCurrentOwner(
-      nftContract,
-      tokenId,
+      decodedCallData.nftChainId,
+      decodedCallData.nftContract,
+      decodedCallData.nftTokenId,
     );
   } catch (e) {
     return callback(new rpc.Error.InternalError('Error fetching owner'));
   }
 
-  // generate proof for owner or authorized
+  // generate proof for owner if valid nonce
   let proof: string;
   try {
-    proof = await generateProof({
-      owner,
-      nonce,
-      nftContract,
-      tokenId,
-      to,
-      tokenNonce
-      // abi,
-    });
+    proof = await generateProof(owner, to, abi, decodedCallData);
   } catch (e) {
-    console.warn(e);
     return callback(new rpc.Error.InternalError('Error generating proof'));
   }
 
